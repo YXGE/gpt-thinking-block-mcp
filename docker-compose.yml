@@ -1,0 +1,12 @@
+services:
+  gpt-thinking-block:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PORT:-8787}:8787"
+    environment:
+      CAPTURE_ENABLED: "${CAPTURE_ENABLED:-0}"
+      CAPTURE_DIR: /data/captured
+      THINKING_PROMPT_LANGUAGE: "${THINKING_PROMPT_LANGUAGE:-en}"
+    volumes:
+      - ./captured:/data/captured
