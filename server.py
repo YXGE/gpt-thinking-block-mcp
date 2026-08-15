@@ -28,7 +28,7 @@ CAPTURE_ENABLED = os.environ.get("CAPTURE_ENABLED", "0").lower() in {"1", "true"
 BIND_HOST = os.environ.get("MCP_BIND", "127.0.0.1")
 
 PROTOCOL_FALLBACK = "2025-06-18"
-WIDGET_URI = "ui://widget/gpt-thinking-block-v3.html"
+WIDGET_URI = "ui://widget/gpt-thinking-block-v4.html"
 WIDGET_MIME = "text/html;profile=mcp-app"
 
 
