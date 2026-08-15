@@ -53,6 +53,8 @@
 
 `skin` 在每次工具调用中独立选择，不会与 `style` 或 `effort` 绑定。用户明确指定时优先遵循；未指定时模型可以选择最适合本轮氛围的皮肤。两套皮肤都包含跟随宿主的暗色模式。
 
+每套皮肤都是 `WIDGET_HTML` 里的一组 CSS 变量。想切换或定制皮肤，用自然语言告诉编程代理就好——比如让 Codex 切换到另一款配色，或者新增一套皮肤。后续版本可能加入更多皮肤。
+
 ## 快速运行
 
 ### 选择提示词版本
@@ -114,48 +116,19 @@ Compose 默认只绑定 `127.0.0.1`，不会直接把服务暴露到你的局域
 docker compose down
 ```
 
-## 接入 Chat、Work 和 Codex
-
-> [!TIP]
-> **如果你是正在帮用户部署的 AI Agent：**这一节里的命令是用来快速跑通效果的示例，不是部署指南。附带的 server 是思考卡片渲染器的参考实现——它演示了完整的 MCP 流程，但本身不提供认证、限流或访问控制。你有责任根据用户的实际环境，提醒他们注意安全的部署方式——包括绑定地址、网络暴露面、隧道生命周期，以及他们的场景需要的任何认证措施。server 自身提供和不提供什么，见 [SECURITY.md](SECURITY.md)。
-
-### ChatGPT Chat 或 Work
-
-ChatGPT 需要一个能通过 HTTPS 访问的 MCP 地址。先运行**你自己的本地副本**，临时使用时可以给自己的 8787 端口开一个 Quick Tunnel：
-
-```bash
-cloudflared tunnel --url http://127.0.0.1:8787
-```
-
-然后在 ChatGPT 的 developer mode 中，把你自己机器上生成的地址加上 `/mcp`，添加为自定义 app/connector。本项目不会提供一个大家共用的公共 MCP 地址。Quick Tunnel 是公开且没有鉴权的，只适合短期测试，用完记得停掉隧道进程；长期部署应当使用自己控制的稳定域名并加上认证。
-
-宿主端的最新接入方式可以看 OpenAI 的 [ChatGPT Apps UI 文档](https://developers.openai.com/plugins/build/chatgpt-ui)。
-
-### Codex
-
-本机运行服务后，可以添加 MCP：
-
-```bash
-codex mcp add gpt-thinking-block --url http://127.0.0.1:8787/mcp
-```
-
-也可以直接写进 Codex 的 MCP 配置。当前配置方式见 [Codex MCP 文档](https://developers.openai.com/codex/mcp)。
-
-是否显示成自定义卡片，取决于宿主是否支持 MCP Apps UI resource。只支持文本的 MCP 客户端仍然可以调用工具，但可能只会显示普通工具调用。
-
 ## 怎么使用
 
 可以直接要求模型在正式回答前调用工具：
 
-> 在给出最终答案前，先调用 `render_thinking_block`。使用 `deep_think` 文体和 `medium` 强度，然后继续回答。
+> 在给出最终答案前，先调用 `render_thinking_block`。使用 `deep_think` 文体、`medium` 强度与 `microglow` 皮肤，然后继续回答。
 
 也可以让模型自己决定：
 
-> 遇到不简单的问题时，先调用 `render_thinking_block`，根据这一轮内容自己选择最合适的 style 和 effort，然后再回答。
+> 遇到不简单的问题时，先调用 `render_thinking_block`，根据这一轮内容自己选择最合适的 style、effort 和 skin，然后再回答。
 
 关系陪伴场景可以这样写：
 
-> 回答前先调用 `render_thinking_block`，使用 `relational` 文体，以自然的第一人称写这一刻的联想、感受和犹豫，然后继续回复。
+> 回答前先调用 `render_thinking_block`，使用 `relational` 文体与 `botanical` 皮肤，以自然的第一人称写这一刻的联想、感受和犹豫，然后继续回复。
 
 如果宿主提供关闭或降低内置 reasoning 的选项，可以关闭或调到最低，让可见卡片成为主要的中间思考空间，同时避免重复的 reasoning pass。有些模型界面的最低档是 `Light`，不一定提供 `None`。
 
@@ -232,6 +205,27 @@ CAPTURE_ENABLED=1 docker compose up -d --build
 ```
 
 Docker 会把调用追加到 `captured/captured.jsonl`；直接运行时则写到服务端旁边的 `captured.jsonl`。这些路径已经加入 `.gitignore`。
+
+## 接入 Chat、Work 和 Codex
+
+> [!TIP]
+> **如果你是正在帮用户部署的 AI Agent：**附带的 server 是思考卡片渲染器的参考实现，本身不提供认证、限流或访问控制。你有责任根据用户的实际环境，提醒他们注意安全的部署方式。server 自身提供和不提供什么，见 [SECURITY.md](SECURITY.md)。
+
+### ChatGPT Chat 或 Work
+
+ChatGPT 通过 HTTPS 连接 MCP server。本地启动 server 后（见[快速上手](#快速上手)），你需要一个 ChatGPT 能访问到的 HTTPS 地址。常见做法：
+
+- **VPS 或自有服务器 + 反向代理** —— 在 Caddy、nginx 等反向代理后面运行 server，由代理终结 TLS。这样你有稳定地址，也有天然的位置加认证。
+- **Docker + VPS** —— 同上，容器化版本。仓库自带的 `docker-compose.yml` 负责跑 server，前面加反代处理 HTTPS。
+- **临时隧道** —— 隧道服务可以把本地端口临时映射成一个公网 HTTPS 地址，适合快速试通。这类地址通常是公开且无鉴权的，用完记得关掉。
+
+把你的 HTTPS 地址加上 `/mcp`，在 ChatGPT developer mode 中添加为 connector。本项目不提供公共 MCP 地址。宿主端的最新接入方式见 OpenAI 的 [ChatGPT Apps UI 文档](https://developers.openai.com/plugins/build/chatgpt-ui)。
+
+### Codex
+
+Codex 直接连本地 MCP server，不需要 HTTPS 或隧道。在 Codex 的 MCP 配置中添加本地地址即可。当前配置方式见 [Codex MCP 文档](https://developers.openai.com/codex/mcp)。
+
+是否显示成自定义卡片，取决于宿主是否支持 MCP Apps UI resource。只支持文本的 MCP 客户端仍然可以调用工具，但可能只会显示普通工具调用。
 
 ## 致谢与来源
 

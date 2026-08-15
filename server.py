@@ -12,7 +12,6 @@ arguments and append them to captured.jsonl. CAPTURE_DIR changes that location.
 Set THINKING_PROMPT_LANGUAGE=en or zh-CN to choose the tool schema language.
 """
 
-import hmac
 import json
 import os
 import sys
@@ -20,32 +19,12 @@ import uuid
 import pathlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-def _flag(name, default="0"):
-    return os.environ.get(name, default).lower() in {"1", "true", "yes", "on"}
-
-
-def _csv(name):
-    return {v.strip().lower() for v in (os.environ.get(name) or "").split(",") if v.strip()}
-
-
 _dir = os.environ.get("CAPTURE_DIR")
 LOG = (pathlib.Path(_dir) if _dir else pathlib.Path(__file__).parent) / "captured.jsonl"
-CAPTURE_ENABLED = _flag("CAPTURE_ENABLED")
+CAPTURE_ENABLED = os.environ.get("CAPTURE_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
 
-# Network boundary. Defaults are loopback-only: this server has no authentication
-# of its own, so it must not become reachable by accident.
+# Loopback by default. Exposure, TLS, and authentication belong to the deployment.
 BIND_HOST = os.environ.get("MCP_BIND", "127.0.0.1")
-AUTH_TOKEN = os.environ.get("MCP_AUTH_TOKEN") or ""
-TRUST_PROXY = _flag("MCP_TRUST_PROXY")
-_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
-# Extra hostnames this server may be addressed by (reverse proxy / tunnel domain).
-# A leading "*." matches any subdomain, since ephemeral tunnels change hostname
-# on every restart and a config people cannot keep up with gets switched off.
-_configured_hosts = _csv("MCP_ALLOWED_HOSTS")
-ALLOWED_HOSTS = _LOCAL_HOSTS | {h for h in _configured_hosts if not h.startswith("*.")}
-ALLOWED_HOST_SUFFIXES = {h[1:] for h in _configured_hosts if h.startswith("*.")}
-# Browser origins allowed to call this server. Empty means "no browser origin".
-ALLOWED_ORIGINS = _csv("MCP_ALLOWED_ORIGINS")
 
 PROTOCOL_FALLBACK = "2025-06-18"
 WIDGET_URI = "ui://widget/gpt-thinking-block-v2.html"
@@ -638,84 +617,19 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("  · %s\n" % (fmt % args))
 
     def _cors(self):
-        # Only ever echo an origin we explicitly allow; never "*". A wildcard here
-        # would let any web page read this server's responses.
-        origin = self.headers.get("Origin")
-        if origin and origin.lower() in ALLOWED_ORIGINS:
-            self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Vary", "Origin")
-        self.send_header("Access-Control-Allow-Headers",
-                         "content-type, authorization, mcp-session-id, mcp-protocol-version")
+        self.send_header("Access-Control-Allow-Headers", "content-type, mcp-session-id, mcp-protocol-version")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Expose-Headers", "mcp-session-id")
 
-    def _host_allowed(self):
-        raw = (self.headers.get("Host") or "").strip().lower()
-        if not raw:
-            return True
-        if raw.startswith("["):  # IPv6 literal, optionally with a port
-            host = raw[1:raw.index("]")] if "]" in raw else raw[1:]
-        else:
-            host = raw.rsplit(":", 1)[0] if raw.count(":") == 1 else raw
-        if host in ALLOWED_HOSTS:
-            return True
-        return any(host.endswith(suffix) for suffix in ALLOWED_HOST_SUFFIXES)
-
-    def _guard(self):
-        """Reject requests that fall outside the configured network boundary.
-
-        Returns True when the request may proceed. Origin and Host are both
-        checked: DNS rebinding turns an attacker's domain into a request at
-        127.0.0.1, and only these headers still carry the attacker's identity.
-        """
-        origin = self.headers.get("Origin")
-        if origin and origin.lower() not in ALLOWED_ORIGINS:
-            self._deny(403, "origin not allowed")
-            return False
-
-        if not self._host_allowed():
-            self._deny(403, "host not allowed")
-            return False
-
-        if AUTH_TOKEN:
-            header = self.headers.get("Authorization") or ""
-            token = header[7:] if header[:7].lower() == "bearer " else ""
-            if not hmac.compare_digest(token, AUTH_TOKEN):
-                self._deny(401, "unauthorized")
-                return False
-        return True
-
-    def _deny(self, code, message):
-        # Close rather than keep-alive: the request body is deliberately left
-        # unread, and reusing the connection would parse it as the next request.
-        self.close_connection = True
-        body = json.dumps({"error": message}).encode()
-        self.send_response(code)
-        self._cors()
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Connection", "close")
-        self.end_headers()
-        self.wfile.write(body)
-
     def do_OPTIONS(self):
-        if not self._guard():
-            return
         self.send_response(204)
         self._cors()
         self.send_header("Content-Length", "0")
         self.end_headers()
 
     def _base(self):
-        # Forwarded headers are attacker-controlled unless a trusted proxy sets
-        # them, and this URL is published in the OpenAPI document.
-        if TRUST_PROXY:
-            host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or "localhost"
-            proto = self.headers.get("X-Forwarded-Proto") or "http"
-        else:
-            host = self.headers.get("Host") or "localhost"
-            proto = "http"
-        return f"{proto}://{host}"
+        host = self.headers.get("Host") or "localhost"
+        return f"http://{host}"
 
     def _json(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -727,8 +641,6 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if not self._guard():
-            return
         path = self.path.split("?")[0]
         if path == "/health":
             self._json(200, {
@@ -753,16 +665,12 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     def do_DELETE(self):
-        if not self._guard():
-            return
         self.send_response(200)
         self._cors()
         self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_POST(self):
-        if not self._guard():
-            return
         length = int(self.headers.get("Content-Length") or 0)
         if self.path.split("?")[0] == "/think":
             try:
@@ -826,8 +734,4 @@ if __name__ == "__main__":
     print(f"GPT Thinking Block MCP listening on http://{BIND_HOST}:{port}/mcp")
     print(f"Prompt language: {PROMPT_LANGUAGE}")
     print(f"Capture: {'enabled -> ' + str(LOG) if CAPTURE_ENABLED else 'disabled'}")
-    print(f"Auth: {'bearer token required' if AUTH_TOKEN else 'none (loopback only)'}")
-    if BIND_HOST not in _LOCAL_HOSTS and not AUTH_TOKEN:
-        print("[warn] bound to a non-loopback address with no MCP_AUTH_TOKEN set; "
-              "anyone who can reach this port can call it", file=sys.stderr, flush=True)
     ThreadingHTTPServer((BIND_HOST, port), Handler).serve_forever()

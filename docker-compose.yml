@@ -13,10 +13,5 @@ services:
       CAPTURE_ENABLED: "${CAPTURE_ENABLED:-0}"
       CAPTURE_DIR: /data/captured
       THINKING_PROMPT_LANGUAGE: "${THINKING_PROMPT_LANGUAGE:-en}"
-      # Required before any tunnel or reverse proxy is pointed at this service.
-      MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:-}"
-      MCP_ALLOWED_HOSTS: "${MCP_ALLOWED_HOSTS:-}"
-      MCP_ALLOWED_ORIGINS: "${MCP_ALLOWED_ORIGINS:-}"
-      MCP_TRUST_PROXY: "${MCP_TRUST_PROXY:-0}"
     volumes:
       - ./captured:/data/captured
