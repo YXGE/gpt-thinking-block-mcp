@@ -1,8 +1,13 @@
 import contextlib
 import io
+import json
 import pathlib
 import tempfile
+import threading
 import unittest
+from http import client
+from http.server import ThreadingHTTPServer
+from unittest import mock
 
 import server
 
@@ -43,6 +48,10 @@ class ProtocolTests(unittest.TestCase):
             ["low", "medium", "high"],
         )
         self.assertNotIn("soft generation targets", effort_description)
+        skin = tool["inputSchema"]["properties"]["skin"]
+        self.assertEqual(skin["enum"], ["botanical", "microglow"])
+        self.assertIn("glass-like morning light", skin["description"])
+        self.assertIn("skin", tool["inputSchema"]["required"])
 
     def test_original_chinese_prompt_edition_is_available(self):
         self.assertEqual(server.normalize_prompt_language("zh"), "zh-CN")
@@ -56,6 +65,8 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("必要时可以旁征博引", thinking_description)
         self.assertIn("遵循所请求的 effort 区间", thinking_description)
         self.assertIn("不得为了达到最低值而重复、填充或虚构复杂性", thinking_description)
+        self.assertIn("珍珠白", server.SKIN_DESCRIPTIONS["zh-CN"])
+        self.assertIn("用户明确指定时必须遵循", server.SKIN_DESCRIPTIONS["zh-CN"])
 
     def test_unknown_prompt_language_fails_fast(self):
         with self.assertRaisesRegex(ValueError, "choose en, zh-CN"):
@@ -70,10 +81,12 @@ class ProtocolTests(unittest.TestCase):
                 "style": "deep_think",
                 "thinking": "中文测试 `backtick` and Unicode",
                 "effort": "high",
+                "skin": "microglow",
             }},
         })
         self.assertFalse(response["result"]["isError"])
         self.assertEqual(response["result"]["_meta"]["effort"], "high")
+        self.assertEqual(response["result"]["_meta"]["skin"], "microglow")
 
     def test_capture_failure_does_not_fail_tool(self):
         old_enabled, old_log = server.CAPTURE_ENABLED, server.LOG
@@ -92,6 +105,7 @@ class ProtocolTests(unittest.TestCase):
                             "style": "deep_think",
                             "thinking": "fault injection",
                             "effort": "low",
+                            "skin": "botanical",
                         }},
                     })
                 self.assertFalse(response["result"]["isError"])
@@ -111,7 +125,14 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("setCollapsed", html)
         self.assertIn("-webkit-tap-highlight-color: transparent", html)
         self.assertNotIn("setWidgetState", html)
-        self.assertIn("v1.html", server.WIDGET_URI)
+        self.assertIn("data-skin", html)
+        self.assertIn("#0097d0", html)
+        self.assertIn("#5ebfe0", html)
+        self.assertIn("#a6b7dd", html)
+        self.assertIn("#a4cdd1", html)
+        self.assertIn("#cbdbe1", html)
+        self.assertIn('id="skin"', html)
+        self.assertIn("v2.html", server.WIDGET_URI)
 
     def test_unknown_resource_returns_error(self):
         response = server.handle({
@@ -121,6 +142,120 @@ class ProtocolTests(unittest.TestCase):
             "params": {"uri": "ui://widget/missing.html"},
         })
         self.assertEqual(response["error"]["code"], -32002)
+
+
+class NetworkBoundaryTests(unittest.TestCase):
+    """The server has no session model, so the request boundary is the boundary.
+
+    These run against a real socket: the guards live in the HTTP layer, and
+    testing them at the handler level would not prove a request is refused.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        cls.port = cls.httpd.server_address[1]
+        cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.httpd.shutdown()
+        cls.httpd.server_close()
+        cls.thread.join(timeout=5)
+
+    def request(self, method="POST", path="/mcp", headers=None, body=b"{}"):
+        if method in ("GET", "OPTIONS"):
+            body = None
+        conn = client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request(method, path, body=body, headers=headers or {})
+            response = conn.getresponse()
+            return response.status, dict(response.getheaders()), response.read()
+        finally:
+            conn.close()
+
+    def test_plain_client_without_origin_is_allowed(self):
+        """Non-browser MCP clients send no Origin; they must keep working."""
+        status, _, _ = self.request(body=b'{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+        self.assertEqual(status, 200)
+
+    def test_cross_site_origin_is_refused(self):
+        for path in ("/mcp", "/think"):
+            with self.subTest(path=path):
+                status, _, _ = self.request(
+                    path=path, headers={"Origin": "https://evil.example.com"})
+                self.assertEqual(status, 403)
+
+    def test_preflight_from_cross_site_origin_is_refused(self):
+        status, _, _ = self.request(
+            method="OPTIONS", headers={"Origin": "https://evil.example.com"})
+        self.assertEqual(status, 403)
+
+    def test_rebound_host_is_refused(self):
+        """DNS rebinding reaches 127.0.0.1 carrying the attacker's Host."""
+        status, _, _ = self.request(headers={"Host": "evil.example.com"})
+        self.assertEqual(status, 403)
+
+    def test_loopback_hosts_are_allowed_with_and_without_port(self):
+        for host in ("127.0.0.1", "127.0.0.1:8787", "localhost:8787", "[::1]:8787"):
+            with self.subTest(host=host):
+                status, _, _ = self.request(
+                    headers={"Host": host},
+                    body=b'{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+                self.assertEqual(status, 200)
+
+    def test_wildcard_host_suffix_matches_subdomains_only(self):
+        with mock.patch.object(server, "ALLOWED_HOST_SUFFIXES", {".trycloudflare.com"}):
+            allowed, _, _ = self.request(
+                headers={"Host": "abc-def.trycloudflare.com"},
+                body=b'{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+            self.assertEqual(allowed, 200)
+            # A suffix must not match a lookalike registered elsewhere.
+            refused, _, _ = self.request(headers={"Host": "eviltrycloudflare.com"})
+            self.assertEqual(refused, 403)
+
+    def test_no_wildcard_cors_header(self):
+        _, headers, _ = self.request(body=b'{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+        self.assertNotEqual(headers.get("Access-Control-Allow-Origin"), "*")
+
+    def test_allowed_origin_is_echoed_back(self):
+        with mock.patch.object(server, "ALLOWED_ORIGINS", {"https://chatgpt.com"}):
+            _, headers, _ = self.request(headers={"Origin": "https://chatgpt.com"})
+            self.assertEqual(headers.get("Access-Control-Allow-Origin"), "https://chatgpt.com")
+
+    def test_forwarded_host_does_not_reach_openapi_document(self):
+        """The advertised server URL must not be settable by the caller."""
+        _, _, body = self.request(
+            method="GET", path="/openapi.json",
+            headers={"X-Forwarded-Host": "attacker.example.com"})
+        url = json.loads(body)["servers"][0]["url"]
+        self.assertNotIn("attacker.example.com", url)
+
+    def test_forwarded_host_is_honoured_when_proxy_is_trusted(self):
+        with mock.patch.object(server, "TRUST_PROXY", True):
+            _, _, body = self.request(
+                method="GET", path="/openapi.json",
+                headers={"X-Forwarded-Host": "proxy.example.com",
+                         "X-Forwarded-Proto": "https"})
+            self.assertEqual(json.loads(body)["servers"][0]["url"], "https://proxy.example.com")
+
+    def test_bearer_token_is_required_once_configured(self):
+        with mock.patch.object(server, "AUTH_TOKEN", "secret123"):
+            for header, expected in (
+                (None, 401),
+                ({"Authorization": "Bearer wrong"}, 401),
+                ({"Authorization": "secret123"}, 401),
+                ({"Authorization": "Bearer secret123"}, 200),
+            ):
+                with self.subTest(header=header):
+                    status, _, _ = self.request(
+                        headers=header,
+                        body=b'{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+                    self.assertEqual(status, expected)
+
+    def test_default_bind_is_loopback(self):
+        self.assertIn(server.BIND_HOST, server._LOCAL_HOSTS)
 
 
 if __name__ == "__main__":

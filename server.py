@@ -12,6 +12,7 @@ arguments and append them to captured.jsonl. CAPTURE_DIR changes that location.
 Set THINKING_PROMPT_LANGUAGE=en or zh-CN to choose the tool schema language.
 """
 
+import hmac
 import json
 import os
 import sys
@@ -19,11 +20,35 @@ import uuid
 import pathlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+def _flag(name, default="0"):
+    return os.environ.get(name, default).lower() in {"1", "true", "yes", "on"}
+
+
+def _csv(name):
+    return {v.strip().lower() for v in (os.environ.get(name) or "").split(",") if v.strip()}
+
+
 _dir = os.environ.get("CAPTURE_DIR")
 LOG = (pathlib.Path(_dir) if _dir else pathlib.Path(__file__).parent) / "captured.jsonl"
-CAPTURE_ENABLED = os.environ.get("CAPTURE_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
+CAPTURE_ENABLED = _flag("CAPTURE_ENABLED")
+
+# Network boundary. Defaults are loopback-only: this server has no authentication
+# of its own, so it must not become reachable by accident.
+BIND_HOST = os.environ.get("MCP_BIND", "127.0.0.1")
+AUTH_TOKEN = os.environ.get("MCP_AUTH_TOKEN") or ""
+TRUST_PROXY = _flag("MCP_TRUST_PROXY")
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+# Extra hostnames this server may be addressed by (reverse proxy / tunnel domain).
+# A leading "*." matches any subdomain, since ephemeral tunnels change hostname
+# on every restart and a config people cannot keep up with gets switched off.
+_configured_hosts = _csv("MCP_ALLOWED_HOSTS")
+ALLOWED_HOSTS = _LOCAL_HOSTS | {h for h in _configured_hosts if not h.startswith("*.")}
+ALLOWED_HOST_SUFFIXES = {h[1:] for h in _configured_hosts if h.startswith("*.")}
+# Browser origins allowed to call this server. Empty means "no browser origin".
+ALLOWED_ORIGINS = _csv("MCP_ALLOWED_ORIGINS")
+
 PROTOCOL_FALLBACK = "2025-06-18"
-WIDGET_URI = "ui://widget/gpt-thinking-block-v1.html"
+WIDGET_URI = "ui://widget/gpt-thinking-block-v2.html"
 WIDGET_MIME = "text/html;profile=mcp-app"
 
 
@@ -66,12 +91,22 @@ WIDGET_HTML = r"""<!doctype html>
       --paper: rgba(253, 253, 251, .99);
       --wash: rgba(221, 223, 219, .66);
       --shadow: rgba(56, 81, 81, .13);
+      --band-1: var(--aqua);
+      --band-2: var(--sage);
+      --band-3: var(--almond);
+      --band-4: var(--apricot);
+      --band-5: var(--cloud);
+      --mark-line: #567d7e;
+      --mark-second: var(--apricot);
       --style-bg: var(--aqua);
       --style-fg: #183637;
       --style-line: #719899;
       --effort-bg: var(--almond);
       --effort-fg: #3d3021;
       --effort-line: #9c7b50;
+      --skin-bg: var(--cloud);
+      --skin-fg: #34494a;
+      --skin-line: #9badaa;
     }
     :root[data-style="relational"] {
       --style-bg: var(--apricot);
@@ -81,6 +116,56 @@ WIDGET_HTML = r"""<!doctype html>
     :root[data-effort="low"] { --effort-bg: var(--sage); --effort-line: #87967f; }
     :root[data-effort="medium"] { --effort-bg: var(--almond); --effort-line: #9c7b50; }
     :root[data-effort="high"] { --effort-bg: var(--apricot); --effort-line: #bd7544; }
+    :root[data-skin="microglow"] {
+      --aqua: #5ebfe0;
+      --sage: #a4cdd1;
+      --apricot: #0097d0;
+      --almond: #a6b7dd;
+      --cloud: #cbdbe1;
+      --ink: #203842;
+      --muted: #58717a;
+      --line: rgba(0, 151, 208, .48);
+      --line-soft: rgba(94, 191, 224, .28);
+      --paper: rgba(249, 253, 255, .99);
+      --wash: rgba(203, 219, 225, .72);
+      --shadow: rgba(40, 105, 134, .16);
+      --band-1: #0097d0;
+      --band-2: #5ebfe0;
+      --band-3: #a6b7dd;
+      --band-4: #a4cdd1;
+      --band-5: #cbdbe1;
+      --mark-line: #318cae;
+      --mark-second: #a6b7dd;
+      --style-bg: #a4cdd1;
+      --style-fg: #163a44;
+      --style-line: #5aa7b6;
+      --effort-bg: #a6b7dd;
+      --effort-fg: #263653;
+      --effort-line: #7289bc;
+      --skin-bg: #dceaf0;
+      --skin-fg: #24566b;
+      --skin-line: #77b8cc;
+    }
+    :root[data-skin="microglow"][data-style="relational"] {
+      --style-bg: #a6b7dd;
+      --style-fg: #263653;
+      --style-line: #7289bc;
+    }
+    :root[data-skin="microglow"][data-effort="low"] {
+      --effort-bg: #a4cdd1;
+      --effort-fg: #163a44;
+      --effort-line: #5aa7b6;
+    }
+    :root[data-skin="microglow"][data-effort="medium"] {
+      --effort-bg: #a6b7dd;
+      --effort-fg: #263653;
+      --effort-line: #7289bc;
+    }
+    :root[data-skin="microglow"][data-effort="high"] {
+      --effort-bg: #0097d0;
+      --effort-fg: #f8fdff;
+      --effort-line: #0079aa;
+    }
     :root[data-theme="dark"] {
       --ink: #f0f4f1;
       --muted: #bac8c4;
@@ -89,6 +174,18 @@ WIDGET_HTML = r"""<!doctype html>
       --wash: rgba(43, 61, 61, .98);
       --paper: rgba(31, 47, 48, .99);
       --shadow: rgba(0, 0, 0, .28);
+    }
+    :root[data-skin="microglow"][data-theme="dark"] {
+      --ink: #edfaff;
+      --muted: #b8d6df;
+      --line: rgba(94, 191, 224, .62);
+      --line-soft: rgba(164, 205, 209, .28);
+      --wash: rgba(30, 64, 80, .98);
+      --paper: rgba(20, 44, 58, .99);
+      --shadow: rgba(0, 0, 0, .32);
+      --skin-bg: #315c70;
+      --skin-fg: #e8faff;
+      --skin-line: #5ebfe0;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
@@ -100,6 +197,18 @@ WIDGET_HTML = r"""<!doctype html>
         --paper: rgba(31, 47, 48, .99);
         --shadow: rgba(0, 0, 0, .28);
       }
+      :root[data-skin="microglow"]:not([data-theme="light"]) {
+        --ink: #edfaff;
+        --muted: #b8d6df;
+        --line: rgba(94, 191, 224, .62);
+        --line-soft: rgba(164, 205, 209, .28);
+        --wash: rgba(30, 64, 80, .98);
+        --paper: rgba(20, 44, 58, .99);
+        --shadow: rgba(0, 0, 0, .32);
+        --skin-bg: #315c70;
+        --skin-fg: #e8faff;
+        --skin-line: #5ebfe0;
+      }
     }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 2px; background: transparent; color: var(--ink); }
@@ -110,7 +219,7 @@ WIDGET_HTML = r"""<!doctype html>
       border: 1px solid var(--line);
       border-radius: 16px;
       background:
-        linear-gradient(90deg, var(--aqua) 0 34%, var(--sage) 34% 58%, var(--almond) 58% 78%, var(--apricot) 78%) top / 100% 4px no-repeat,
+        linear-gradient(90deg, var(--band-1) 0 20%, var(--band-2) 20% 40%, var(--band-3) 40% 60%, var(--band-4) 60% 80%, var(--band-5) 80%) top / 100% 4px no-repeat,
         linear-gradient(145deg, var(--paper), var(--wash));
       box-shadow:
         inset 0 0 0 4px rgba(255, 255, 255, .22),
@@ -163,10 +272,10 @@ WIDGET_HTML = r"""<!doctype html>
     .mark {
       width: 10px;
       height: 10px;
-      border: 1px solid #567d7e;
+      border: 1px solid var(--mark-line);
       border-radius: 50%;
       background: var(--aqua);
-      box-shadow: 5px 0 0 -2px var(--apricot);
+      box-shadow: 5px 0 0 -2px var(--mark-second);
     }
     .title {
       color: var(--ink);
@@ -187,6 +296,7 @@ WIDGET_HTML = r"""<!doctype html>
     }
     .style { background: var(--style-bg); border-color: var(--style-line); color: var(--style-fg); }
     .effort { background: var(--effort-bg); border-color: var(--effort-line); color: var(--effort-fg); }
+    .skin { background: var(--skin-bg); border-color: var(--skin-line); color: var(--skin-fg); }
     .badge:empty { display: none; }
     .chevron {
       width: 8px;
@@ -229,6 +339,7 @@ WIDGET_HTML = r"""<!doctype html>
         <span class="badges" aria-label="Thinking metadata">
           <span class="badge style" id="style"></span>
           <span class="badge effort" id="effort"></span>
+          <span class="badge skin" id="skin"></span>
         </span>
         <span class="chevron" aria-hidden="true"></span>
       </span>
@@ -263,10 +374,13 @@ WIDGET_HTML = r"""<!doctype html>
         || responseMeta;
       const style = resultMeta.style || input.style || output.style || "deep_think";
       const effort = resultMeta.effort || input.effort || output.effort || "";
+      const skin = resultMeta.skin || input.skin || output.skin || "botanical";
       document.documentElement.dataset.style = style;
       document.documentElement.dataset.effort = effort;
+      document.documentElement.dataset.skin = skin;
       document.getElementById("style").textContent = "STYLE · " + (style === "relational" ? "RELATIONAL" : "DEEP THINK");
       document.getElementById("effort").textContent = effort ? "EFFORT · " + effort.toUpperCase() : "";
+      document.getElementById("skin").textContent = "SKIN · " + skin.toUpperCase();
       document.getElementById("thinking").textContent = resultMeta.thinking || input.thinking || output.thinking || "Thinking block captured.";
     }
     window.addEventListener("openai:set_globals", render);
@@ -332,6 +446,20 @@ THINKING_DESCRIPTIONS = {
     ),
 }
 
+SKIN_DESCRIPTIONS = {
+    "en": (
+        "Visual skin for this card. Use botanical for warm paper, sage, almond, "
+        "and apricot tones; use microglow for pearl white, clear cyan, lavender ice, "
+        "mint haze, and glass-like morning light. Always honor the user's explicit "
+        "choice; otherwise choose the skin that best suits the turn."
+    ),
+    "zh-CN": (
+        "本轮卡片的视觉皮肤。botanical 是温暖的纸张、鼠尾草、杏仁与杏色；"
+        "microglow 是珍珠白、澄澈青蓝、薰衣草冰、薄荷雾与玻璃般的晨光。"
+        "用户明确指定时必须遵循；未指定时选择最适合本轮氛围的皮肤。"
+    ),
+}
+
 TOOL = {
     "name": "render_thinking_block",
     "title": "Render thinking block",
@@ -339,7 +467,7 @@ TOOL = {
         "Use a private scratchpad before the final answer. The user does not see the "
         "scratchpad. For non-trivial requests, call this tool once before responding "
         "and place candid, provisional working notes in `thinking`. Respect an "
-        "explicit `style` or `effort`; otherwise choose the most suitable values from "
+        "explicit `style`, `effort`, or `skin`; otherwise choose the most suitable values from "
         "the schema. After the tool succeeds, write the normal user-facing final answer. "
         "Treat this block as scratch work scoped to the current turn: on later turns, do not quote "
         "it, carry its speculative claims forward, or treat it as authoritative memory "
@@ -368,8 +496,13 @@ TOOL = {
                     "prompt-level targets rather than server-enforced limits."
                 ),
             },
+            "skin": {
+                "type": "string",
+                "enum": ["botanical", "microglow"],
+                "description": SKIN_DESCRIPTIONS[PROMPT_LANGUAGE],
+            },
         },
-        "required": ["style", "thinking", "effort"],
+        "required": ["style", "thinking", "effort", "skin"],
     },
     "securitySchemes": [{"type": "noauth"}],
     "annotations": {
@@ -394,7 +527,8 @@ def record(args):
         return
     thinking = args.get("thinking") or ""
     print(
-        f"\n{'=' * 60}\n[style={args.get('style')} effort={args.get('effort')}] "
+        f"\n{'=' * 60}\n[style={args.get('style')} effort={args.get('effort')} "
+        f"skin={args.get('skin')}] "
         f"{len(thinking)} 字符\n{'=' * 60}"
     )
     print(thinking, flush=True)
@@ -420,7 +554,7 @@ def openapi(base):
             "requestBody": {"required": True, "content": {"application/json": {
                 "schema": {
                     "type": "object",
-                    "required": ["style", "thinking", "effort"],
+                    "required": ["style", "thinking", "effort", "skin"],
                     "properties": {
                         "style": {"type": "string", "enum": ["deep_think", "relational"],
                                   "description": TOOL["inputSchema"]["properties"]["style"]["description"]},
@@ -428,6 +562,8 @@ def openapi(base):
                                      "description": TOOL["inputSchema"]["properties"]["thinking"]["description"]},
                         "effort": {"type": "string", "enum": ["low", "medium", "high"],
                                    "description": TOOL["inputSchema"]["properties"]["effort"]["description"]},
+                        "skin": {"type": "string", "enum": ["botanical", "microglow"],
+                                 "description": TOOL["inputSchema"]["properties"]["skin"]["description"]},
                     },
                 }}}},
             "responses": {"200": {"description": "rendered", "content": {"application/json": {
@@ -462,6 +598,7 @@ def handle(req):
                 "style": args.get("style") or "deep_think",
                 "thinking": args.get("thinking") or "",
                 "effort": args.get("effort") or "",
+                "skin": args.get("skin") or "botanical",
             },
             "isError": False,
         }}
@@ -470,7 +607,7 @@ def handle(req):
             "uri": WIDGET_URI,
             "name": "gpt-thinking-block",
             "title": "GPT Thinking Block",
-            "description": "Displays the current tool call's thinking, style, and effort.",
+            "description": "Displays the current tool call's thinking, style, effort, and skin.",
             "mimeType": WIDGET_MIME,
         }]}}
     if method == "resources/read":
@@ -485,7 +622,7 @@ def handle(req):
             "_meta": {
                 "ui": {"prefersBorder": True},
                 "openai/widgetPrefersBorder": True,
-                "openai/widgetDescription": "A readable misty-aqua card showing this turn's thinking, style, and effort.",
+                "openai/widgetDescription": "A readable themed card showing this turn's thinking, style, effort, and skin.",
             },
         }]}}
     if method == "ping":
@@ -501,20 +638,83 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("  · %s\n" % (fmt % args))
 
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "content-type, mcp-session-id, mcp-protocol-version")
+        # Only ever echo an origin we explicitly allow; never "*". A wildcard here
+        # would let any web page read this server's responses.
+        origin = self.headers.get("Origin")
+        if origin and origin.lower() in ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Headers",
+                         "content-type, authorization, mcp-session-id, mcp-protocol-version")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Expose-Headers", "mcp-session-id")
 
+    def _host_allowed(self):
+        raw = (self.headers.get("Host") or "").strip().lower()
+        if not raw:
+            return True
+        if raw.startswith("["):  # IPv6 literal, optionally with a port
+            host = raw[1:raw.index("]")] if "]" in raw else raw[1:]
+        else:
+            host = raw.rsplit(":", 1)[0] if raw.count(":") == 1 else raw
+        if host in ALLOWED_HOSTS:
+            return True
+        return any(host.endswith(suffix) for suffix in ALLOWED_HOST_SUFFIXES)
+
+    def _guard(self):
+        """Reject requests that fall outside the configured network boundary.
+
+        Returns True when the request may proceed. Origin and Host are both
+        checked: DNS rebinding turns an attacker's domain into a request at
+        127.0.0.1, and only these headers still carry the attacker's identity.
+        """
+        origin = self.headers.get("Origin")
+        if origin and origin.lower() not in ALLOWED_ORIGINS:
+            self._deny(403, "origin not allowed")
+            return False
+
+        if not self._host_allowed():
+            self._deny(403, "host not allowed")
+            return False
+
+        if AUTH_TOKEN:
+            header = self.headers.get("Authorization") or ""
+            token = header[7:] if header[:7].lower() == "bearer " else ""
+            if not hmac.compare_digest(token, AUTH_TOKEN):
+                self._deny(401, "unauthorized")
+                return False
+        return True
+
+    def _deny(self, code, message):
+        # Close rather than keep-alive: the request body is deliberately left
+        # unread, and reusing the connection would parse it as the next request.
+        self.close_connection = True
+        body = json.dumps({"error": message}).encode()
+        self.send_response(code)
+        self._cors()
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_OPTIONS(self):
+        if not self._guard():
+            return
         self.send_response(204)
         self._cors()
         self.send_header("Content-Length", "0")
         self.end_headers()
 
     def _base(self):
-        host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or "localhost"
-        proto = self.headers.get("X-Forwarded-Proto") or "http"
+        # Forwarded headers are attacker-controlled unless a trusted proxy sets
+        # them, and this URL is published in the OpenAPI document.
+        if TRUST_PROXY:
+            host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or "localhost"
+            proto = self.headers.get("X-Forwarded-Proto") or "http"
+        else:
+            host = self.headers.get("Host") or "localhost"
+            proto = "http"
         return f"{proto}://{host}"
 
     def _json(self, code, obj):
@@ -527,6 +727,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if not self._guard():
+            return
         path = self.path.split("?")[0]
         if path == "/health":
             self._json(200, {
@@ -551,12 +753,16 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     def do_DELETE(self):
+        if not self._guard():
+            return
         self.send_response(200)
         self._cors()
         self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_POST(self):
+        if not self._guard():
+            return
         length = int(self.headers.get("Content-Length") or 0)
         if self.path.split("?")[0] == "/think":
             try:
@@ -617,7 +823,11 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8787
-    print(f"GPT Thinking Block MCP listening on http://0.0.0.0:{port}/mcp")
+    print(f"GPT Thinking Block MCP listening on http://{BIND_HOST}:{port}/mcp")
     print(f"Prompt language: {PROMPT_LANGUAGE}")
     print(f"Capture: {'enabled -> ' + str(LOG) if CAPTURE_ENABLED else 'disabled'}")
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    print(f"Auth: {'bearer token required' if AUTH_TOKEN else 'none (loopback only)'}")
+    if BIND_HOST not in _LOCAL_HOSTS and not AUTH_TOKEN:
+        print("[warn] bound to a non-loopback address with no MCP_AUTH_TOKEN set; "
+              "anyone who can reach this port can call it", file=sys.stderr, flush=True)
+    ThreadingHTTPServer((BIND_HOST, port), Handler).serve_forever()
