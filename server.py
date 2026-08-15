@@ -18,6 +18,7 @@ import sys
 import uuid
 import pathlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 _dir = os.environ.get("CAPTURE_DIR")
 LOG = (pathlib.Path(_dir) if _dir else pathlib.Path(__file__).parent) / "captured.jsonl"
@@ -48,6 +49,25 @@ def normalize_prompt_language(value):
     return aliases[normalized]
 
 
+def normalize_widget_domain(value):
+    """Return a bare HTTPS origin for the ChatGPT widget sandbox."""
+    parsed = urlsplit(value.strip())
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path not in {"", "/"}
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "WIDGET_DOMAIN must be a bare HTTPS origin such as "
+            "https://thinking.example.com"
+        )
+    return f"https://{parsed.netloc}"
+
+
 def resolve_port(argv=None, environ=None):
     """Prefer an explicit CLI port, then the platform PORT, then 8787 locally."""
     argv = sys.argv if argv is None else argv
@@ -58,6 +78,9 @@ def resolve_port(argv=None, environ=None):
 
 
 PROMPT_LANGUAGE = normalize_prompt_language(os.environ.get("THINKING_PROMPT_LANGUAGE", "en"))
+WIDGET_DOMAIN = normalize_widget_domain(
+    os.environ.get("WIDGET_DOMAIN", "https://thinking.zeabur.app")
+)
 WIDGET_HTML = r"""<!doctype html>
 <html lang="en">
 <head>
@@ -746,8 +769,20 @@ def handle(req):
             "mimeType": WIDGET_MIME,
             "text": WIDGET_HTML,
             "_meta": {
-                "ui": {"prefersBorder": True},
+                "ui": {
+                    "prefersBorder": True,
+                    "csp": {
+                        "connectDomains": [],
+                        "resourceDomains": [],
+                    },
+                    "domain": WIDGET_DOMAIN,
+                },
                 "openai/widgetPrefersBorder": True,
+                "openai/widgetCSP": {
+                    "connect_domains": [],
+                    "resource_domains": [],
+                },
+                "openai/widgetDomain": WIDGET_DOMAIN,
                 "openai/widgetDescription": "A readable themed card showing this turn's thinking, style, effort, and skin.",
             },
         }]}}

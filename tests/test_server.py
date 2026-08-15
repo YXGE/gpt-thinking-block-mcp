@@ -73,6 +73,22 @@ class ProtocolTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "choose en, zh-CN"):
             server.normalize_prompt_language("fr")
 
+    def test_widget_domain_requires_a_bare_https_origin(self):
+        self.assertEqual(
+            server.normalize_widget_domain("https://thinking.zeabur.app/"),
+            "https://thinking.zeabur.app",
+        )
+        invalid_domains = [
+            "http://thinking.zeabur.app",
+            "https://thinking.zeabur.app/mcp",
+            "https://thinking.zeabur.app?preview=1",
+            "https://thinking.zeabur.app#widget",
+        ]
+        for domain in invalid_domains:
+            with self.subTest(domain=domain):
+                with self.assertRaisesRegex(ValueError, "bare HTTPS origin"):
+                    server.normalize_widget_domain(domain)
+
     def test_unicode_tool_call_succeeds(self):
         response = server.handle({
             "jsonrpc": "2.0",
@@ -121,7 +137,19 @@ class ProtocolTests(unittest.TestCase):
             "method": "resources/read",
             "params": {"uri": server.WIDGET_URI},
         })
-        html = response["result"]["contents"][0]["text"]
+        content = response["result"]["contents"][0]
+        html = content["text"]
+        metadata = content["_meta"]
+        self.assertEqual(metadata["ui"]["domain"], "https://thinking.zeabur.app")
+        self.assertEqual(
+            metadata["ui"]["csp"],
+            {"connectDomains": [], "resourceDomains": []},
+        )
+        self.assertEqual(metadata["openai/widgetDomain"], "https://thinking.zeabur.app")
+        self.assertEqual(
+            metadata["openai/widgetCSP"],
+            {"connect_domains": [], "resource_domains": []},
+        )
         self.assertIn('aria-expanded="true"', html)
         self.assertIn("setCollapsed", html)
         self.assertIn("-webkit-tap-highlight-color: transparent", html)
