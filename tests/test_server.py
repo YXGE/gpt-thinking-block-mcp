@@ -8,6 +8,11 @@ import server
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_port_resolution_supports_hosted_and_local_runs(self):
+        self.assertEqual(server.resolve_port(["server.py"], {}), 8787)
+        self.assertEqual(server.resolve_port(["server.py"], {"PORT": "8080"}), 8080)
+        self.assertEqual(server.resolve_port(["server.py", "9999"], {"PORT": "8080"}), 9999)
+
     def test_initialize(self):
         response = server.handle({
             "jsonrpc": "2.0",

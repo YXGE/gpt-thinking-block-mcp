@@ -10,6 +10,8 @@ services:
       # Inside the container this must be 0.0.0.0 for the port mapping above to
       # reach it; the container's own network namespace is the isolation.
       MCP_BIND: "0.0.0.0"
+      # Preserve the documented local endpoint while hosted platforms can inject PORT.
+      PORT: "8787"
       CAPTURE_ENABLED: "${CAPTURE_ENABLED:-0}"
       CAPTURE_DIR: /data/captured
       THINKING_PROMPT_LANGUAGE: "${THINKING_PROMPT_LANGUAGE:-en}"

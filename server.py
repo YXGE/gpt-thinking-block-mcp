@@ -48,6 +48,15 @@ def normalize_prompt_language(value):
     return aliases[normalized]
 
 
+def resolve_port(argv=None, environ=None):
+    """Prefer an explicit CLI port, then the platform PORT, then 8787 locally."""
+    argv = sys.argv if argv is None else argv
+    environ = os.environ if environ is None else environ
+    if len(argv) > 1:
+        return int(argv[1])
+    return int(environ.get("PORT", "8787"))
+
+
 PROMPT_LANGUAGE = normalize_prompt_language(os.environ.get("THINKING_PROMPT_LANGUAGE", "en"))
 WIDGET_HTML = r"""<!doctype html>
 <html lang="en">
@@ -868,7 +877,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8787
+    port = resolve_port()
     print(f"GPT Thinking Block MCP listening on http://{BIND_HOST}:{port}/mcp")
     print(f"Prompt language: {PROMPT_LANGUAGE}")
     print(f"Capture: {'enabled -> ' + str(LOG) if CAPTURE_ENABLED else 'disabled'}")
