@@ -162,6 +162,11 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("#cbdbe1", html)
         self.assertIn('id="skin"', html)
         self.assertIn('data-skin="storybook"', html)
+        self.assertIn("--aqua: #b7c5c0", html)
+        self.assertIn("--apricot: #d8b79f", html)
+        self.assertIn("--paper: #fbf7ed", html)
+        self.assertIn("rgba(183, 197, 192, .3)", html)
+        self.assertNotIn("--apricot: #e3aa7d", html)
         self.assertIn("hand-drawn borders", server.SKIN_DESCRIPTIONS["en"])
         self.assertIn("v3.html", server.WIDGET_URI)
 
