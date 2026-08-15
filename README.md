@@ -11,7 +11,7 @@ Sometimes the final answer is not the only thing worth seeing. We also want to k
 
 This is more than placing text inside a polished frame. Giving the model an explicit working step before its final response creates room to track constraints, catch omissions, compare alternatives, and organize uncertainty. The thinking block becomes part of the current turn, so it can meaningfully shape the answer that follows while making the reasoning easier to inspect, steer, and refine.
 
-Choose `deep_think` for analytical work or `relational` for a natural first-person companion voice. Use `low`, `medium`, or `high` to control how much visible thinking the turn receives, or rewrite the token bands entirely. Choose the warm `botanical` skin or the pearl-and-ice `microglow` skin independently for each card. The card is rendered through the MCP Apps UI model supported by compatible hosts, and its palette, borders, typography, badges, spacing, dark mode, and collapse behavior are all yours to customize.
+Choose `deep_think` for analytical work or `relational` for a natural first-person companion voice. Use `low`, `medium`, or `high` to control how much visible thinking the turn receives, or rewrite the token bands entirely. Choose the warm `botanical`, pearl-and-ice `microglow`, or hand-painted `storybook` skin independently for each card. The card is rendered through the MCP Apps UI model supported by compatible hosts, and its palette, borders, typography, badges, spacing, dark mode, and collapse behavior are all yours to customize.
 
 > [!IMPORTANT]
 > This is a self-hosted product, not a shared hosted service. Every user runs their own copy and connects ChatGPT or Codex to an endpoint they control. No project-operated public MCP endpoint is provided.
@@ -48,8 +48,9 @@ These are prompt-level target bands, not hard server-side limits. `low` may stop
 |---|---|---|
 | `botanical` | misty aqua, sage, almond, apricot | Warm paper and quiet botanical notes |
 | `microglow` | `#0097d0`, `#5ebfe0`, `#a6b7dd`, `#a4cdd1`, `#cbdbe1` | Pearl, lavender ice, mint haze, and glass-like morning light |
+| `storybook` | cream paper, watercolor sage, apricot, moonlit plum | Hand-drawn borders, watercolor blooms, and quiet picture-book charm |
 
-`skin` is selected per tool call, independently of `style` and `effort`. An explicit user choice takes priority; otherwise the model may choose the skin that best suits the turn. Both skins include host-aware dark-mode colors.
+`skin` is selected per tool call, independently of `style` and `effort`. An explicit user choice takes priority; otherwise the model may choose the skin that best suits the turn. All three skins include host-aware dark-mode colors.
 
 Each skin is a set of CSS variables inside `WIDGET_HTML`. To switch, add, or tweak a skin, describe what you want to a coding agent — for example, ask Codex to switch to a different palette or create a new skin. More skins may be added in future updates.
 

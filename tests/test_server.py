@@ -44,8 +44,9 @@ class ProtocolTests(unittest.TestCase):
         )
         self.assertNotIn("soft generation targets", effort_description)
         skin = tool["inputSchema"]["properties"]["skin"]
-        self.assertEqual(skin["enum"], ["botanical", "microglow"])
+        self.assertEqual(skin["enum"], ["botanical", "microglow", "storybook"])
         self.assertIn("glass-like morning light", skin["description"])
+        self.assertIn("picture-book charm", skin["description"])
         self.assertIn("skin", tool["inputSchema"]["required"])
 
     def test_original_chinese_prompt_edition_is_available(self):
@@ -127,7 +128,9 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("#a4cdd1", html)
         self.assertIn("#cbdbe1", html)
         self.assertIn('id="skin"', html)
-        self.assertIn("v2.html", server.WIDGET_URI)
+        self.assertIn('data-skin="storybook"', html)
+        self.assertIn("hand-drawn borders", server.SKIN_DESCRIPTIONS["en"])
+        self.assertIn("v3.html", server.WIDGET_URI)
 
     def test_unknown_resource_returns_error(self):
         response = server.handle({

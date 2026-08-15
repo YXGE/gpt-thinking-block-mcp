@@ -27,7 +27,7 @@ CAPTURE_ENABLED = os.environ.get("CAPTURE_ENABLED", "0").lower() in {"1", "true"
 BIND_HOST = os.environ.get("MCP_BIND", "127.0.0.1")
 
 PROTOCOL_FALLBACK = "2025-06-18"
-WIDGET_URI = "ui://widget/gpt-thinking-block-v2.html"
+WIDGET_URI = "ui://widget/gpt-thinking-block-v3.html"
 WIDGET_MIME = "text/html;profile=mcp-app"
 
 
@@ -145,6 +145,56 @@ WIDGET_HTML = r"""<!doctype html>
       --effort-fg: #f8fdff;
       --effort-line: #0079aa;
     }
+    :root[data-skin="storybook"] {
+      --aqua: #a8c8be;
+      --sage: #c4cea8;
+      --apricot: #e3aa7d;
+      --almond: #d7bd96;
+      --cloud: #e9dfcd;
+      --ink: #4b3938;
+      --muted: #765f5d;
+      --line: rgba(104, 78, 72, .54);
+      --line-soft: rgba(128, 97, 84, .25);
+      --paper: #fff9e8;
+      --wash: #f3e3cb;
+      --shadow: rgba(87, 63, 55, .16);
+      --band-1: #9fc3ba;
+      --band-2: #c7cfaa;
+      --band-3: #d8be98;
+      --band-4: #e4ad82;
+      --band-5: #c5b5c9;
+      --mark-line: #745d7b;
+      --mark-second: #d89969;
+      --style-bg: #e4ad82;
+      --style-fg: #553428;
+      --style-line: #b87b58;
+      --effort-bg: #d8be98;
+      --effort-fg: #4a3828;
+      --effort-line: #a88861;
+      --skin-bg: #c5b5c9;
+      --skin-fg: #4c3b55;
+      --skin-line: #96829e;
+    }
+    :root[data-skin="storybook"][data-style="relational"] {
+      --style-bg: #e7b090;
+      --style-fg: #5d342d;
+      --style-line: #b87863;
+    }
+    :root[data-skin="storybook"][data-effort="low"] {
+      --effort-bg: #c4cea8;
+      --effort-fg: #3d482e;
+      --effort-line: #8f9b70;
+    }
+    :root[data-skin="storybook"][data-effort="medium"] {
+      --effort-bg: #d8be98;
+      --effort-fg: #4a3828;
+      --effort-line: #a88861;
+    }
+    :root[data-skin="storybook"][data-effort="high"] {
+      --effort-bg: #c5b5c9;
+      --effort-fg: #4c3b55;
+      --effort-line: #96829e;
+    }
     :root[data-theme="dark"] {
       --ink: #f0f4f1;
       --muted: #bac8c4;
@@ -165,6 +215,18 @@ WIDGET_HTML = r"""<!doctype html>
       --skin-bg: #315c70;
       --skin-fg: #e8faff;
       --skin-line: #5ebfe0;
+    }
+    :root[data-skin="storybook"][data-theme="dark"] {
+      --ink: #f3e9d6;
+      --muted: #ccbca9;
+      --line: rgba(211, 174, 142, .58);
+      --line-soft: rgba(211, 174, 142, .25);
+      --paper: #302a35;
+      --wash: #41333b;
+      --shadow: rgba(0, 0, 0, .3);
+      --skin-bg: #66536f;
+      --skin-fg: #fff2dc;
+      --skin-line: #b092b9;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
@@ -187,6 +249,18 @@ WIDGET_HTML = r"""<!doctype html>
         --skin-bg: #315c70;
         --skin-fg: #e8faff;
         --skin-line: #5ebfe0;
+      }
+      :root[data-skin="storybook"]:not([data-theme="light"]) {
+        --ink: #f3e9d6;
+        --muted: #ccbca9;
+        --line: rgba(211, 174, 142, .58);
+        --line-soft: rgba(211, 174, 142, .25);
+        --paper: #302a35;
+        --wash: #41333b;
+        --shadow: rgba(0, 0, 0, .3);
+        --skin-bg: #66536f;
+        --skin-fg: #fff2dc;
+        --skin-line: #b092b9;
       }
     }
     * { box-sizing: border-box; }
@@ -212,6 +286,39 @@ WIDGET_HTML = r"""<!doctype html>
       inset: 5px;
       border: 1px solid var(--line-soft);
       border-radius: 11px;
+      pointer-events: none;
+    }
+    :root[data-skin="storybook"] .card {
+      overflow: hidden;
+      border-width: 2px;
+      border-radius: 21px 17px 23px 16px;
+      background:
+        radial-gradient(circle at 9% 18%, rgba(164, 202, 191, .48), transparent 29%),
+        radial-gradient(circle at 88% 12%, rgba(229, 171, 130, .4), transparent 25%),
+        radial-gradient(circle at 80% 88%, rgba(195, 180, 201, .38), transparent 27%),
+        repeating-linear-gradient(6deg, rgba(107, 79, 64, .025) 0 1px, transparent 1px 5px),
+        linear-gradient(145deg, var(--paper), var(--wash));
+      box-shadow:
+        inset 0 0 28px rgba(133, 94, 69, .08),
+        0 9px 22px var(--shadow);
+      padding: 20px 21px 22px;
+    }
+    :root[data-skin="storybook"] .card::before {
+      inset: 6px 7px 7px 5px;
+      border: 1px dashed var(--line-soft);
+      border-radius: 15px 12px 17px 11px;
+      transform: rotate(.12deg);
+    }
+    :root[data-skin="storybook"] .card::after {
+      content: "☾  ·  ✦  ·  ❦";
+      position: absolute;
+      z-index: -1;
+      right: 17px;
+      bottom: 6px;
+      color: var(--mark-line);
+      font: 14px/1 Georgia, "Times New Roman", serif;
+      letter-spacing: .18em;
+      opacity: .48;
       pointer-events: none;
     }
     .header {
@@ -244,6 +351,10 @@ WIDGET_HTML = r"""<!doctype html>
       outline-offset: 4px;
       border-radius: 7px;
     }
+    :root[data-skin="storybook"] .header {
+      border-bottom-style: dashed;
+      font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    }
     .identity, .meta, .badges { display: flex; align-items: center; }
     .identity { gap: 9px; }
     .meta { gap: 9px; margin-left: auto; }
@@ -255,6 +366,15 @@ WIDGET_HTML = r"""<!doctype html>
       border-radius: 50%;
       background: var(--aqua);
       box-shadow: 5px 0 0 -2px var(--mark-second);
+    }
+    :root[data-skin="storybook"] .mark {
+      width: 13px;
+      height: 13px;
+      border: 0;
+      background: transparent;
+      box-shadow:
+        inset -4px 0 0 var(--mark-line),
+        7px -4px 0 -4px var(--mark-second);
     }
     .title {
       color: var(--ink);
@@ -273,6 +393,14 @@ WIDGET_HTML = r"""<!doctype html>
       padding: 4px 9px;
       text-transform: uppercase;
     }
+    :root[data-skin="storybook"] .badge {
+      border-radius: 11px 15px 10px 14px;
+      font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+      letter-spacing: .055em;
+      box-shadow: 1px 1px 0 rgba(92, 67, 57, .12);
+    }
+    :root[data-skin="storybook"] .badge:nth-child(2) { transform: rotate(-.6deg); }
+    :root[data-skin="storybook"] .badge:nth-child(3) { transform: rotate(.7deg); }
     .style { background: var(--style-bg); border-color: var(--style-line); color: var(--style-fg); }
     .effort { background: var(--effort-bg); border-color: var(--effort-line); color: var(--effort-fg); }
     .skin { background: var(--skin-bg); border-color: var(--skin-line); color: var(--skin-fg); }
@@ -303,6 +431,13 @@ WIDGET_HTML = r"""<!doctype html>
       color: var(--ink);
       font: 14px/1.72 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       letter-spacing: .003em;
+    }
+    :root[data-skin="storybook"] .thinking {
+      padding: 1px 3px 5px;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Songti SC", Georgia, serif;
+      font-size: 14.5px;
+      line-height: 1.86;
+      letter-spacing: .012em;
     }
   </style>
 </head>
@@ -429,12 +564,15 @@ SKIN_DESCRIPTIONS = {
     "en": (
         "Visual skin for this card. Use botanical for warm paper, sage, almond, "
         "and apricot tones; use microglow for pearl white, clear cyan, lavender ice, "
-        "mint haze, and glass-like morning light. Always honor the user's explicit "
+        "mint haze, and glass-like morning light; use storybook for watercolor washes, "
+        "hand-drawn borders, cream paper, moonlit plum, and quiet picture-book charm. "
+        "Always honor the user's explicit "
         "choice; otherwise choose the skin that best suits the turn."
     ),
     "zh-CN": (
         "本轮卡片的视觉皮肤。botanical 是温暖的纸张、鼠尾草、杏仁与杏色；"
         "microglow 是珍珠白、澄澈青蓝、薰衣草冰、薄荷雾与玻璃般的晨光。"
+        "storybook 是水彩晕染、手绘边框、奶油画纸、月夜梅紫与安静的绘本气息。"
         "用户明确指定时必须遵循；未指定时选择最适合本轮氛围的皮肤。"
     ),
 }
@@ -477,7 +615,7 @@ TOOL = {
             },
             "skin": {
                 "type": "string",
-                "enum": ["botanical", "microglow"],
+                "enum": ["botanical", "microglow", "storybook"],
                 "description": SKIN_DESCRIPTIONS[PROMPT_LANGUAGE],
             },
         },
@@ -541,7 +679,7 @@ def openapi(base):
                                      "description": TOOL["inputSchema"]["properties"]["thinking"]["description"]},
                         "effort": {"type": "string", "enum": ["low", "medium", "high"],
                                    "description": TOOL["inputSchema"]["properties"]["effort"]["description"]},
-                        "skin": {"type": "string", "enum": ["botanical", "microglow"],
+                        "skin": {"type": "string", "enum": ["botanical", "microglow", "storybook"],
                                  "description": TOOL["inputSchema"]["properties"]["skin"]["description"]},
                     },
                 }}}},
