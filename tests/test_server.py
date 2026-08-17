@@ -170,7 +170,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertNotIn("rgba(183, 197, 192, .3)", html)
         self.assertNotIn("--apricot: #e3aa7d", html)
         self.assertIn("quiet editorial reading experience", server.SKIN_DESCRIPTIONS["en"])
-        self.assertIn("v4.html", server.WIDGET_URI)
+        self.assertIn("v5.html", server.WIDGET_URI)
 
     def test_unknown_resource_returns_error(self):
         response = server.handle({

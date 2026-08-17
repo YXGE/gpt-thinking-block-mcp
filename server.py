@@ -28,9 +28,10 @@ CAPTURE_ENABLED = os.environ.get("CAPTURE_ENABLED", "0").lower() in {"1", "true"
 BIND_HOST = os.environ.get("MCP_BIND", "127.0.0.1")
 
 PROTOCOL_FALLBACK = "2025-06-18"
-WIDGET_URI = "ui://widget/gpt-thinking-block-v4.html"
+WIDGET_URI = "ui://widget/gpt-thinking-block-v5.html"
 SUPPORTED_WIDGET_URIS = {
     WIDGET_URI,
+    "ui://widget/gpt-thinking-block-v4.html",
     "ui://widget/gpt-thinking-block-v3.html",
     "ui://widget/gpt-thinking-block-v2.html",
     "ui://widget/gpt-thinking-block-v1.html",
