@@ -51,7 +51,7 @@ class ProtocolTests(unittest.TestCase):
         skin = tool["inputSchema"]["properties"]["skin"]
         self.assertEqual(skin["enum"], ["botanical", "microglow", "storybook"])
         self.assertIn("glass-like morning light", skin["description"])
-        self.assertIn("picture-book charm", skin["description"])
+        self.assertIn("quiet editorial reading experience", skin["description"])
         self.assertIn("skin", tool["inputSchema"]["required"])
 
     def test_original_chinese_prompt_edition_is_available(self):
@@ -162,12 +162,14 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("#cbdbe1", html)
         self.assertIn('id="skin"', html)
         self.assertIn('data-skin="storybook"', html)
-        self.assertIn("--aqua: #b7c5c0", html)
-        self.assertIn("--apricot: #d8b79f", html)
-        self.assertIn("--paper: #fbf7ed", html)
-        self.assertIn("rgba(183, 197, 192, .3)", html)
+        self.assertIn("--aqua: #f0ebe3", html)
+        self.assertIn("--apricot: #e8b9a7", html)
+        self.assertIn("--paper: #f8f6f1", html)
+        self.assertIn("--mark-line: #d97757", html)
+        self.assertIn("background: var(--paper)", html)
+        self.assertNotIn("rgba(183, 197, 192, .3)", html)
         self.assertNotIn("--apricot: #e3aa7d", html)
-        self.assertIn("hand-drawn borders", server.SKIN_DESCRIPTIONS["en"])
+        self.assertIn("quiet editorial reading experience", server.SKIN_DESCRIPTIONS["en"])
         self.assertIn("v4.html", server.WIDGET_URI)
 
     def test_unknown_resource_returns_error(self):

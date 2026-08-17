@@ -184,54 +184,54 @@ WIDGET_HTML = r"""<!doctype html>
       --effort-line: #0079aa;
     }
     :root[data-skin="storybook"] {
-      --aqua: #b7c5c0;
-      --sage: #c9ccb9;
-      --apricot: #d8b79f;
-      --almond: #d5c3aa;
-      --cloud: #e7dfd2;
-      --ink: #514544;
-      --muted: #766b69;
-      --line: rgba(102, 87, 83, .46);
-      --line-soft: rgba(122, 104, 96, .2);
-      --paper: #fbf7ed;
-      --wash: #ece4d8;
-      --shadow: rgba(78, 66, 61, .11);
-      --band-1: #b4c3be;
-      --band-2: #c7cab9;
-      --band-3: #d2c2ad;
-      --band-4: #d7b8a3;
-      --band-5: #c6bdc6;
-      --mark-line: #756e7a;
-      --mark-second: #c7a68f;
-      --style-bg: #d7b8a3;
-      --style-fg: #59453e;
-      --style-line: #a88878;
-      --effort-bg: #d2c2ad;
-      --effort-fg: #51483e;
-      --effort-line: #9e8d78;
-      --skin-bg: #c6bdc6;
-      --skin-fg: #514b55;
-      --skin-line: #918893;
+      --aqua: #f0ebe3;
+      --sage: #eee9e1;
+      --apricot: #e8b9a7;
+      --almond: #ebe4da;
+      --cloud: #f3efe8;
+      --ink: #2f2b28;
+      --muted: #746b63;
+      --line: rgba(77, 67, 58, .16);
+      --line-soft: rgba(77, 67, 58, .09);
+      --paper: #f8f6f1;
+      --wash: #f4f0e9;
+      --shadow: rgba(58, 46, 35, .08);
+      --band-1: #f8f6f1;
+      --band-2: #f8f6f1;
+      --band-3: #f8f6f1;
+      --band-4: #f8f6f1;
+      --band-5: #f8f6f1;
+      --mark-line: #d97757;
+      --mark-second: #e8b9a7;
+      --style-bg: #f1d8cd;
+      --style-fg: #6a3f32;
+      --style-line: #e3b5a3;
+      --effort-bg: #efeae2;
+      --effort-fg: #625a52;
+      --effort-line: #ded6cb;
+      --skin-bg: #efeae2;
+      --skin-fg: #625a52;
+      --skin-line: #ded6cb;
     }
     :root[data-skin="storybook"][data-style="relational"] {
-      --style-bg: #d9bbaa;
-      --style-fg: #5b4640;
-      --style-line: #a98b7d;
+      --style-bg: #f1d8cd;
+      --style-fg: #6a3f32;
+      --style-line: #e3b5a3;
     }
     :root[data-skin="storybook"][data-effort="low"] {
-      --effort-bg: #c9ccb9;
-      --effort-fg: #4b5042;
-      --effort-line: #929681;
+      --effort-bg: #efeae2;
+      --effort-fg: #625a52;
+      --effort-line: #ded6cb;
     }
     :root[data-skin="storybook"][data-effort="medium"] {
-      --effort-bg: #d2c2ad;
-      --effort-fg: #51483e;
-      --effort-line: #9e8d78;
+      --effort-bg: #ece6dc;
+      --effort-fg: #5d554d;
+      --effort-line: #d9d0c4;
     }
     :root[data-skin="storybook"][data-effort="high"] {
-      --effort-bg: #c6bdc6;
-      --effort-fg: #514b55;
-      --effort-line: #918893;
+      --effort-bg: #ead1c6;
+      --effort-fg: #684033;
+      --effort-line: #deb09e;
     }
     :root[data-theme="dark"] {
       --ink: #f0f4f1;
@@ -255,16 +255,16 @@ WIDGET_HTML = r"""<!doctype html>
       --skin-line: #5ebfe0;
     }
     :root[data-skin="storybook"][data-theme="dark"] {
-      --ink: #eee8dc;
-      --muted: #c4bbb0;
-      --line: rgba(184, 164, 148, .48);
-      --line-soft: rgba(184, 164, 148, .2);
-      --paper: #302d31;
-      --wash: #3b3639;
-      --shadow: rgba(0, 0, 0, .25);
-      --skin-bg: #5f5963;
-      --skin-fg: #eee7dd;
-      --skin-line: #8f8493;
+      --ink: #2f2b28;
+      --muted: #746b63;
+      --line: rgba(77, 67, 58, .16);
+      --line-soft: rgba(77, 67, 58, .09);
+      --paper: #f8f6f1;
+      --wash: #f4f0e9;
+      --shadow: rgba(58, 46, 35, .08);
+      --skin-bg: #efeae2;
+      --skin-fg: #625a52;
+      --skin-line: #ded6cb;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
@@ -289,16 +289,16 @@ WIDGET_HTML = r"""<!doctype html>
         --skin-line: #5ebfe0;
       }
       :root[data-skin="storybook"]:not([data-theme="light"]) {
-        --ink: #eee8dc;
-        --muted: #c4bbb0;
-        --line: rgba(184, 164, 148, .48);
-        --line-soft: rgba(184, 164, 148, .2);
-        --paper: #302d31;
-        --wash: #3b3639;
-        --shadow: rgba(0, 0, 0, .25);
-        --skin-bg: #5f5963;
-        --skin-fg: #eee7dd;
-        --skin-line: #8f8493;
+        --ink: #2f2b28;
+        --muted: #746b63;
+        --line: rgba(77, 67, 58, .16);
+        --line-soft: rgba(77, 67, 58, .09);
+        --paper: #f8f6f1;
+        --wash: #f4f0e9;
+        --shadow: rgba(58, 46, 35, .08);
+        --skin-bg: #efeae2;
+        --skin-fg: #625a52;
+        --skin-line: #ded6cb;
       }
     }
     * { box-sizing: border-box; }
@@ -328,36 +328,17 @@ WIDGET_HTML = r"""<!doctype html>
     }
     :root[data-skin="storybook"] .card {
       overflow: hidden;
-      border-width: 2px;
-      border-radius: 21px 17px 23px 16px;
-      background:
-        radial-gradient(circle at 9% 18%, rgba(183, 197, 192, .3), transparent 29%),
-        radial-gradient(circle at 88% 12%, rgba(216, 183, 159, .26), transparent 25%),
-        radial-gradient(circle at 80% 88%, rgba(198, 189, 198, .25), transparent 27%),
-        repeating-linear-gradient(6deg, rgba(107, 79, 64, .025) 0 1px, transparent 1px 5px),
-        linear-gradient(145deg, var(--paper), var(--wash));
-      box-shadow:
-        inset 0 0 28px rgba(105, 90, 81, .055),
-        0 9px 22px var(--shadow);
-      padding: 20px 21px 22px;
+      border-width: 1px;
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: 0 3px 14px var(--shadow);
+      padding: 18px 20px 20px;
     }
     :root[data-skin="storybook"] .card::before {
-      inset: 6px 7px 7px 5px;
-      border: 1px dashed var(--line-soft);
-      border-radius: 15px 12px 17px 11px;
-      transform: rotate(.12deg);
+      display: none;
     }
     :root[data-skin="storybook"] .card::after {
-      content: "☾  ·  ✦  ·  ❦";
-      position: absolute;
-      z-index: -1;
-      right: 17px;
-      bottom: 6px;
-      color: var(--mark-line);
-      font: 14px/1 Georgia, "Times New Roman", serif;
-      letter-spacing: .18em;
-      opacity: .48;
-      pointer-events: none;
+      display: none;
     }
     .header {
       display: flex;
@@ -390,8 +371,10 @@ WIDGET_HTML = r"""<!doctype html>
       border-radius: 7px;
     }
     :root[data-skin="storybook"] .header {
-      border-bottom-style: dashed;
-      font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom-style: solid;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .identity, .meta, .badges { display: flex; align-items: center; }
     .identity { gap: 9px; }
@@ -406,13 +389,11 @@ WIDGET_HTML = r"""<!doctype html>
       box-shadow: 5px 0 0 -2px var(--mark-second);
     }
     :root[data-skin="storybook"] .mark {
-      width: 13px;
-      height: 13px;
+      width: 10px;
+      height: 10px;
       border: 0;
-      background: transparent;
-      box-shadow:
-        inset -4px 0 0 var(--mark-line),
-        7px -4px 0 -4px var(--mark-second);
+      background: var(--mark-line);
+      box-shadow: 0 0 0 4px rgba(217, 119, 87, .11);
     }
     .title {
       color: var(--ink);
@@ -432,13 +413,20 @@ WIDGET_HTML = r"""<!doctype html>
       text-transform: uppercase;
     }
     :root[data-skin="storybook"] .badge {
-      border-radius: 11px 15px 10px 14px;
-      font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
-      letter-spacing: .055em;
-      box-shadow: 1px 1px 0 rgba(92, 67, 57, .12);
+      border-radius: 999px;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 650;
+      letter-spacing: .035em;
+      box-shadow: none;
     }
-    :root[data-skin="storybook"] .badge:nth-child(2) { transform: rotate(-.6deg); }
-    :root[data-skin="storybook"] .badge:nth-child(3) { transform: rotate(.7deg); }
+    :root[data-skin="storybook"] .title {
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .01em;
+      text-transform: none;
+    }
+    :root[data-skin="storybook"] .badge:nth-child(2),
+    :root[data-skin="storybook"] .badge:nth-child(3) { transform: none; }
     .style { background: var(--style-bg); border-color: var(--style-line); color: var(--style-fg); }
     .effort { background: var(--effort-bg); border-color: var(--effort-line); color: var(--effort-fg); }
     .skin { background: var(--skin-bg); border-color: var(--skin-line); color: var(--skin-fg); }
@@ -471,11 +459,11 @@ WIDGET_HTML = r"""<!doctype html>
       letter-spacing: .003em;
     }
     :root[data-skin="storybook"] .thinking {
-      padding: 1px 3px 5px;
-      font-family: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Songti SC", Georgia, serif;
+      padding: 0 2px 2px;
+      font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Songti SC", Georgia, serif;
       font-size: 14.5px;
-      line-height: 1.86;
-      letter-spacing: .012em;
+      line-height: 1.78;
+      letter-spacing: .006em;
     }
   </style>
 </head>
@@ -602,15 +590,16 @@ SKIN_DESCRIPTIONS = {
     "en": (
         "Visual skin for this card. Use botanical for warm paper, sage, almond, "
         "and apricot tones; use microglow for pearl white, clear cyan, lavender ice, "
-        "mint haze, and glass-like morning light; use storybook for watercolor washes, "
-        "hand-drawn borders, cream paper, moonlit plum, and quiet picture-book charm. "
+        "mint haze, and glass-like morning light; use storybook for warm cream paper, "
+        "restrained terracotta accents, soft rounded borders, and a "
+        "quiet editorial reading experience. "
         "Always honor the user's explicit "
         "choice; otherwise choose the skin that best suits the turn."
     ),
     "zh-CN": (
         "本轮卡片的视觉皮肤。botanical 是温暖的纸张、鼠尾草、杏仁与杏色；"
         "microglow 是珍珠白、澄澈青蓝、薰衣草冰、薄荷雾与玻璃般的晨光。"
-        "storybook 是水彩晕染、手绘边框、奶油画纸、月夜梅紫与安静的绘本气息。"
+        "storybook 是浅暖奶油纸、克制的陶土橙点缀、柔和圆角与安静的编辑阅读感。"
         "用户明确指定时必须遵循；未指定时选择最适合本轮氛围的皮肤。"
     ),
 }
